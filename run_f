@@ -1,0 +1,36 @@
+#!/bin/bash
+# Збірка й запуск одного .cpp файлу (версія для Fedora/Linux; ./run — для macOS).
+#   ./run_f Lab/Lab-2/lab-2.cpp        -> build/lab-2/lab-2
+#   ./run_f Lessons/lesson_8.cpp       -> build/les_8
+#   ./run_f -b Lab/Lab-2/lab-2.cpp     -> лише зібрати, не запускати
+set -e
+cd "$(dirname "$0")"
+
+run_after=1
+if [[ "$1" == "-b" ]]; then run_after=0; shift; fi
+
+src="$1"
+if [[ -z "$src" || ! -f "$src" ]]; then
+  echo "Використання: ./run_f [-b] шлях/до/файлу.cpp" >&2
+  exit 1
+fi
+
+name="$(basename "$src")"; name="${name%.*}"   # lab-2.cpp -> lab-2 (розширення відкидається завжди)
+dir="$(basename "$(dirname "$src")")"; dir="${dir,,}"   # Lab/Lab-2 -> lab-2
+
+case "$dir" in
+  lessons) out="build/${name/lesson_/les_}" ;;   # lesson_8 -> build/les_8
+  *)       out="build/$dir/$name" ;;
+esac
+mkdir -p "$(dirname "$out")"
+
+flags=(-std=c++23 -Wall -Wextra -Wpedantic -g -fsanitize=address,undefined)
+
+# На Linux теки *.dSYM не створюються, тож збираємо за один крок.
+clang++ "${flags[@]}" "$src" -o "$out"
+
+echo "Зібрано: $out"
+if (( run_after )); then
+  echo "--------------------"
+  exec "./$out"
+fi
